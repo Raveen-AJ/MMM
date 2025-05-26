@@ -1,29 +1,37 @@
-name: Build DLLs Without SLN
+name: .NET Core Build
 
 on:
-  workflow_dispatch:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
 
 jobs:
   build:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      - name: Setup MSBuild
-        uses: microsoft/setup-msbuild@v1.3
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: |
+            9.0.x
+            2.1.x
+            2.2.x
+
+      - name: Restore NuGet packages for all projects
+        run: |
+          Get-ChildItem -Recurse -Filter *.csproj | ForEach-Object {
+            Write-Host "Restoring: $($_.FullName)"
+            dotnet restore $_.FullName
+          }
 
       - name: Build all .csproj files
         run: |
           Get-ChildItem -Recurse -Filter *.csproj | ForEach-Object {
-            Write-Host "Building $($_.FullName)"
-            msbuild $_.FullName /p:Configuration=Release /p:Platform="x86"
+            Write-Host "Building: $($_.FullName)"
+            dotnet build $_.FullName --configuration Release --no-restore
           }
-
-      - name: Upload DLLs
-        uses: actions/upload-artifact@v4
-        with:
-          name: MMM-DLLs
-          path: |
-            **/bin/Release/*.dll
